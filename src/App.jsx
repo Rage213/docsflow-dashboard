@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { initialPayments, legalEntities, projects } from './data.js';
+import { bankStatementRows, normalizeBankRows } from './importPipeline.js';
 import {
   applyFilters,
   calculateProjectRows,
@@ -8,6 +9,8 @@ import {
   formatDate,
   formatMoney
 } from './businessLogic.js';
+
+const STORAGE_KEY = 'docsflow-payments-v2';
 
 const emptyFilters = {
   search: '',
@@ -27,9 +30,14 @@ const statusLabels = {
 };
 
 export default function App() {
-  const [payments, setPayments] = useState(initialPayments);
+  const [payments, setPayments] = useState(() => loadSavedPayments());
   const [filters, setFilters] = useState(emptyFilters);
   const [selectedPaymentId, setSelectedPaymentId] = useState(initialPayments[1].id);
+  const [importReport, setImportReport] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payments));
+  }, [payments]);
 
   const enrichedPayments = useMemo(
     () => enrichPayments(payments, projects, legalEntities),
@@ -79,12 +87,58 @@ export default function App() {
     );
   }
 
+  function updateManagerComment(paymentId, managerComment) {
+    setPayments((current) =>
+      current.map((payment) =>
+        payment.id === paymentId
+          ? { ...payment, act: { ...payment.act, managerComment } }
+          : payment
+      )
+    );
+  }
+
+  function importBankStatement() {
+    const report = normalizeBankRows(bankStatementRows, projects, legalEntities);
+    const existingIds = new Set(payments.map((payment) => payment.id));
+    const newPayments = report.payments.filter((payment) => !existingIds.has(payment.id));
+
+    if (newPayments.length > 0) {
+      setPayments((current) => [...newPayments, ...current]);
+      setSelectedPaymentId(newPayments[0].id);
+    }
+
+    setImportReport({
+      ...report,
+      addedCount: newPayments.length,
+      duplicateCount: report.payments.length - newPayments.length
+    });
+  }
+
+  function exportPayments() {
+    const payload = JSON.stringify({ exportedAt: new Date().toISOString(), payments }, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'docsflow-payments.json';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function resetDemoData() {
+    setPayments(initialPayments);
+    setSelectedPaymentId(initialPayments[1].id);
+    setImportReport(null);
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
   return (
     <div className="app-shell">
       <Sidebar />
       <main className="workspace">
-        <Header />
+        <Header onExport={exportPayments} onResetDemo={resetDemoData} />
         <SummaryCards summary={summary} />
+        <ImportPanel report={importReport} onImport={importBankStatement} />
         <Filters
           filters={filters}
           projects={projects}
@@ -103,11 +157,24 @@ export default function App() {
               onToggleAct={toggleAct}
             />
           </div>
-          <PaymentDetails payment={selectedPayment} onToggleAct={toggleAct} />
+          <PaymentDetails
+            payment={selectedPayment}
+            onToggleAct={toggleAct}
+            onCommentChange={updateManagerComment}
+          />
         </section>
       </main>
     </div>
   );
+}
+
+function loadSavedPayments() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : initialPayments;
+  } catch {
+    return initialPayments;
+  }
 }
 
 function Sidebar() {
@@ -138,7 +205,7 @@ function Sidebar() {
   );
 }
 
-function Header() {
+function Header({ onExport, onResetDemo }) {
   return (
     <header className="header">
       <div>
@@ -146,10 +213,40 @@ function Header() {
         <p>Связь проектов, юрлиц, оплат, этапов работ и закрывающих документов.</p>
       </div>
       <div className="header-actions">
-        <button className="ghost-button">Экспорт</button>
-        <button className="primary-button">Добавить оплату</button>
+        <button className="ghost-button" onClick={onExport}>
+          Экспорт
+        </button>
+        <button className="primary-button" onClick={onResetDemo}>
+          Вернуть seed
+        </button>
       </div>
     </header>
+  );
+}
+
+function ImportPanel({ report, onImport }) {
+  return (
+    <section className="import-panel">
+      <div>
+        <h2>Импорт банковской выписки</h2>
+        <p>
+          Демонстрация pipeline: PDF-выписка разбирается в операции, сопоставляется с юрлицом,
+          проектом и этапом работ, затем создает оплаты со статусом акта.
+        </p>
+      </div>
+      {report && (
+        <div className="import-result">
+          <strong>{report.addedCount} новых оплат</strong>
+          <span>
+            распознано {report.recognizedCount}, дублей {report.duplicateCount}, неразобрано{' '}
+            {report.unresolvedRows.length}
+          </span>
+        </div>
+      )}
+      <button className="primary-button" onClick={onImport}>
+        Импортировать PDF
+      </button>
+    </section>
   );
 }
 
@@ -363,7 +460,7 @@ function PaymentsTable({ payments, selectedPaymentId, onSelect, onToggleAct }) {
   );
 }
 
-function PaymentDetails({ payment, onToggleAct }) {
+function PaymentDetails({ payment, onToggleAct, onCommentChange }) {
   const events = [
     ['Оплата поступила', formatDate(payment.paymentDate), true],
     ['Акт отправлен', payment.act.sentAt ? formatDate(payment.act.sentAt) : 'ожидает', payment.act.isSent],
@@ -419,7 +516,10 @@ function PaymentDetails({ payment, onToggleAct }) {
       </div>
       <label className="comment-box">
         <span>Комментарий менеджера</span>
-        <textarea defaultValue={payment.act.managerComment} />
+        <textarea
+          value={payment.act.managerComment}
+          onChange={(event) => onCommentChange(payment.id, event.target.value)}
+        />
       </label>
     </aside>
   );
