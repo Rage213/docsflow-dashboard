@@ -277,6 +277,17 @@ export function ReportsView({ payments, projectRows, summary }) {
 }
 
 export function PaymentDetails({ payment, onToggleAct, onCommentChange }) {
+  if (!payment) {
+    return (
+      <aside className="details-panel">
+        <div className="details-header">
+          <h2>Нет выбранной оплаты</h2>
+          <p>По текущим фильтрам записей нет. Сбросьте фильтр или выберите другой статус.</p>
+        </div>
+      </aside>
+    );
+  }
+
   const events = [
     ['Оплата поступила', formatDate(payment.paymentDate), true],
     ['Акт отправлен', payment.act.sentAt ? formatDate(payment.act.sentAt) : 'ожидает', payment.act.isSent],

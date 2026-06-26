@@ -107,7 +107,7 @@ export function PaymentForm({ projects, onCancel, onCreate }) {
         />
       </label>
       <label>
-        <span>Комментарий менеджера</span>
+        <span>Комментарий к оплате</span>
         <textarea
           value={draft.managerComment}
           onChange={(event) => updateField('managerComment', event.target.value)}
@@ -125,3 +125,4 @@ export function PaymentForm({ projects, onCancel, onCreate }) {
     </form>
   );
 }
+

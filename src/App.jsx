@@ -53,7 +53,7 @@ export default function App() {
   );
 
   const selectedPayment =
-    enrichedPayments.find((payment) => payment.id === selectedPaymentId) || enrichedPayments[0];
+    filteredPayments.find((payment) => payment.id === selectedPaymentId) || filteredPayments[0] || null;
 
   const stages = useMemo(
     () => [...new Set(enrichedPayments.map((payment) => payment.serviceStage))].sort(),
@@ -183,7 +183,7 @@ export default function App() {
           projectRows={projectRows}
           projects={projects}
           selectedPayment={selectedPayment}
-          selectedPaymentId={selectedPayment.id}
+          selectedPaymentId={selectedPayment?.id}
           stages={stages}
           summary={summary}
         />
@@ -290,3 +290,4 @@ function ViewContent({
     </>
   );
 }
+
