@@ -30,6 +30,30 @@ export const legalEntities = [
     ogrn: '1027700132195',
     bankAccount: '40702810100000006002',
     contactPerson: 'Павел Миронов'
+  },
+  {
+    id: 'le-lednik',
+    name: 'ООО "Ледник-Старт"',
+    inn: '514203851420',
+    ogrn: '1195142008124',
+    bankAccount: '40702810504010067142',
+    contactPerson: 'Светлана Рябова'
+  },
+  {
+    id: 'le-orbita',
+    name: 'ООО "Орбита-Промо"',
+    inn: '717204674710',
+    ogrn: '1197172008604',
+    bankAccount: '40702810123040048291',
+    contactPerson: 'Дмитрий Крылов'
+  },
+  {
+    id: 'le-sigma',
+    name: 'ООО "Сигма-Маркет"',
+    inn: '717224571730',
+    ogrn: '1197173006042',
+    bankAccount: '40702810888060027194',
+    contactPerson: 'Ольга Ильина'
   }
 ];
 
@@ -65,6 +89,30 @@ export const projects = [
     status: 'closed',
     owner: 'Арина',
     startedAt: '2026-03-18'
+  },
+  {
+    id: 'project-lednik-support',
+    name: 'Техническое сопровождение сайта',
+    legalEntityId: 'le-lednik',
+    status: 'active',
+    owner: 'Матвей',
+    startedAt: '2026-07-09'
+  },
+  {
+    id: 'project-orbita-direct',
+    name: 'Настройка и сопровождение Директа',
+    legalEntityId: 'le-orbita',
+    status: 'active',
+    owner: 'Игорь',
+    startedAt: '2026-07-10'
+  },
+  {
+    id: 'project-sigma-ads',
+    name: 'Объявления и контекстная реклама',
+    legalEntityId: 'le-sigma',
+    status: 'active',
+    owner: 'Елена',
+    startedAt: '2026-07-14'
   }
 ];
 

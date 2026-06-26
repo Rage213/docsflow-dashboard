@@ -134,7 +134,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      <Sidebar summary={summary} />
       <main className="workspace">
         <Header onExport={exportPayments} onResetDemo={resetDemoData} />
         <SummaryCards summary={summary} />
@@ -177,7 +177,7 @@ function loadSavedPayments() {
   }
 }
 
-function Sidebar() {
+function Sidebar({ summary }) {
   const nav = ['Дашборд', 'Проекты', 'Оплаты', 'Акты', 'Отчеты'];
 
   return (
@@ -199,7 +199,7 @@ function Sidebar() {
       </nav>
       <div className="sidebar-note">
         <span>Контроль</span>
-        <strong>5 оплат требуют проверки документов</strong>
+        <strong>{summary.attentionCount} оплат требуют проверки документов</strong>
       </div>
     </aside>
   );

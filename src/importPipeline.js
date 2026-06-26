@@ -1,43 +1,53 @@
 export const bankStatementRows = [
   {
-    id: 'bank-241',
-    paymentDate: '2026-06-25',
-    payerName: 'ООО "Аврора Медиа"',
-    payerInn: '7701845120',
-    amount: 55000,
-    paymentPurpose: 'Оплата третьего этапа по договору 24-05: публикация, аналитика, формы',
-    contractNumber: '24-05',
-    invoiceNumber: 'СЧ-151'
+    id: 'pdf-16-07-9142',
+    paymentDate: '2026-07-16',
+    payerName: 'ООО "Ледник-Старт"',
+    payerInn: '514203851420',
+    amount: 33000,
+    paymentPurpose: 'Оплата за техническое сопровождение сайта по сч. № 742 от 09.07.2026 г. Без НДС.',
+    contractNumber: 'б/н',
+    invoiceNumber: '742'
   },
   {
-    id: 'bank-242',
-    paymentDate: '2026-06-25',
-    payerName: 'ИП Кузнецов Роман Игоревич',
-    payerInn: '540702881490',
-    amount: 41000,
-    paymentPurpose: 'SEO-сопровождение интернет-магазина за июль, договор 11-04',
-    contractNumber: '11-04',
-    invoiceNumber: 'СЧ-152'
+    id: 'pdf-16-07-2387',
+    paymentDate: '2026-07-16',
+    payerName: 'ООО "Орбита-Промо"',
+    payerInn: '717204674710',
+    amount: 36400,
+    paymentPurpose: 'Оплата по счету № 746 от 10.07.2026 г. за настройку и сопровождение Директа с 13.07 по 12.08. НДС не облагается.',
+    contractNumber: 'б/н',
+    invoiceNumber: '746'
   },
   {
-    id: 'bank-243',
-    paymentDate: '2026-06-25',
-    payerName: 'ООО "Норд Сервис"',
-    payerInn: '7816654321',
-    amount: 62000,
-    paymentPurpose: 'CRM-виджеты: настройка уведомлений, импорт лидов и тестирование релиза',
-    contractNumber: '31-05',
-    invoiceNumber: 'СЧ-153'
+    id: 'pdf-17-07-642',
+    paymentDate: '2026-07-17',
+    payerName: 'ООО "Сигма-Маркет"',
+    payerInn: '717224571730',
+    amount: 54400,
+    paymentPurpose: 'Размещение объявлений на сервисе "Объявления" (этап 1) по счету № 733 от 14.07.2026 г. НДС не облагается.',
+    contractNumber: 'б/н',
+    invoiceNumber: '733'
+  },
+  {
+    id: 'pdf-17-07-643',
+    paymentDate: '2026-07-17',
+    payerName: 'ООО "Сигма-Маркет"',
+    payerInn: '717224571730',
+    amount: 56300,
+    paymentPurpose: 'Настройка и ведение кампании контекстной рекламы (этап 1) по счету № 734 от 14.07.2026 г. НДС не облагается.',
+    contractNumber: 'б/н',
+    invoiceNumber: '734'
   }
 ];
 
 const stageRules = [
-  ['seo', 'SEO / июль'],
-  ['публикац', 'Публикация и аналитика'],
-  ['форм', 'Публикация и аналитика'],
-  ['crm', 'Автоматизация лидов'],
-  ['лид', 'Автоматизация лидов'],
-  ['уведомлен', 'Автоматизация лидов']
+  ['техническое сопровождение', 'Техническое сопровождение'],
+  ['директа', 'Контекстная реклама'],
+  ['контекстной рекламы', 'Контекстная реклама'],
+  ['объявлений', 'Размещение объявлений'],
+  ['seo', 'SEO-продвижение'],
+  ['разработку', 'Разработка сайта']
 ];
 
 export function normalizeBankRows(rows, projects, legalEntities) {
@@ -73,7 +83,7 @@ export function normalizeBankRows(rows, projects, legalEntities) {
         sentAt: '',
         isSigned: false,
         signedAt: '',
-        managerComment: 'Импортировано из мок-выписки PDF. Нужно подготовить акт.'
+        managerComment: 'Импортировано из банковской PDF-выписки. Нужно подготовить акт.'
       }
     });
   });
@@ -82,7 +92,7 @@ export function normalizeBankRows(rows, projects, legalEntities) {
     payments,
     unresolvedRows,
     recognizedCount: payments.length,
-    sourceName: 'mock-bank-statement.pdf'
+    sourceName: 'bank_statement_project_data_clean.pdf'
   };
 }
 

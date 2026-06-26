@@ -1,5 +1,5 @@
 const ATTENTION_AFTER_DAYS = 10;
-const today = new Date('2026-06-25T12:00:00');
+const today = new Date('2026-08-14T12:00:00');
 
 export function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU', {
@@ -119,14 +119,13 @@ export function calculateSummary(payments, projects) {
 
   return {
     totalPaid,
-    projectCount: new Set(payments.map((payment) => payment.projectId)).size || projects.length,
+    projectCount: new Set(payments.map((payment) => payment.projectId)).size,
     paymentCount: payments.length,
     closedAmount: closedPayments.reduce((sum, payment) => sum + payment.amount, 0),
     openAmount: openPayments.reduce((sum, payment) => sum + payment.amount, 0),
-    notSentCount: payments.filter((payment) => payment.actStatus.key === 'not-sent').length,
-    waitingSignatureCount: payments.filter(
-      (payment) => payment.actStatus.key === 'waiting-signature'
-    ).length,
+    notSentCount: payments.filter((payment) => !payment.act.isSent).length,
+    waitingSignatureCount: payments.filter((payment) => payment.act.isSent && !payment.act.isSigned)
+      .length,
     attentionCount: payments.filter((payment) => payment.actStatus.key === 'attention').length
   };
 }
@@ -147,7 +146,7 @@ export function calculateProjectRows(payments, projects, legalEntities) {
       openActs: related.length - closed,
       documentStatus: attention ? 'attention' : closed === related.length ? 'closed' : 'in-progress'
     };
-  });
+  }).filter((project) => project.paymentCount > 0);
 }
 
 function isInsidePeriod(date, days) {
