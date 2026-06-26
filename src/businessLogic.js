@@ -1,5 +1,25 @@
 const ATTENTION_AFTER_DAYS = 10;
-const today = new Date('2026-08-14T12:00:00');
+const BUSINESS_DATE = '2026-08-14';
+const today = new Date(`${BUSINESS_DATE}T12:00:00`);
+
+export const businessRules = [
+  {
+    title: 'Закрыто',
+    text: 'Оплата считается закрытой только когда акт отправлен клиенту и подписан.'
+  },
+  {
+    title: 'Требует внимания',
+    text: `Если оплате больше ${ATTENTION_AFTER_DAYS} дней, а акт не отправлен или не подписан, она попадает в контроль.`
+  },
+  {
+    title: 'Ожидает подписи',
+    text: 'Акт уже отправлен, но подпись еще не получена. Деньги не закрыты документами.'
+  },
+  {
+    title: 'Single source of truth',
+    text: 'UI не хранит текстовый статус. Он меняет только поля акта, а статус каждый раз вычисляет businessLogic.js.'
+  }
+];
 
 export function formatMoney(value) {
   return new Intl.NumberFormat('ru-RU', {
@@ -30,7 +50,8 @@ export function getActStatus(payment) {
       key: 'closed',
       label: 'Закрыт',
       tone: 'green',
-      rank: 4
+      rank: 4,
+      reason: 'Акт отправлен и подписан.'
     };
   }
 
@@ -39,7 +60,8 @@ export function getActStatus(payment) {
       key: 'attention',
       label: 'Требует внимания',
       tone: 'amber',
-      rank: 1
+      rank: 1,
+      reason: `Прошло ${age} дней, закрывающие документы не завершены.`
     };
   }
 
@@ -48,7 +70,8 @@ export function getActStatus(payment) {
       key: 'waiting-signature',
       label: 'Ожидает подписи',
       tone: 'blue',
-      rank: 2
+      rank: 2,
+      reason: 'Акт отправлен, но подпись еще не получена.'
     };
   }
 
@@ -56,8 +79,53 @@ export function getActStatus(payment) {
     key: 'not-sent',
     label: 'Не отправлен',
     tone: 'gray',
-    rank: 3
+    rank: 3,
+    reason: 'Акт еще не отправлен клиенту.'
   };
+}
+
+export function transitionAct(payment, key) {
+  const nextAct = { ...payment.act };
+
+  if (key === 'isSent') {
+    nextAct.isSent = !nextAct.isSent;
+    nextAct.sentAt = nextAct.isSent ? nextAct.sentAt || BUSINESS_DATE : '';
+
+    if (!nextAct.isSent) {
+      nextAct.isSigned = false;
+      nextAct.signedAt = '';
+    }
+  }
+
+  if (key === 'isSigned') {
+    nextAct.isSigned = !nextAct.isSigned;
+    nextAct.signedAt = nextAct.isSigned ? nextAct.signedAt || BUSINESS_DATE : '';
+
+    if (nextAct.isSigned && !nextAct.isSent) {
+      nextAct.isSent = true;
+      nextAct.sentAt = nextAct.sentAt || BUSINESS_DATE;
+    }
+  }
+
+  return {
+    ...payment,
+    act: nextAct
+  };
+}
+
+export function validateManualPayment(draft) {
+  const errors = [];
+  const amount = Number(draft.amount);
+
+  if (!draft.projectId) errors.push('Выберите проект.');
+  if (!draft.paymentDate || Number.isNaN(new Date(`${draft.paymentDate}T12:00:00`).getTime())) {
+    errors.push('Укажите корректную дату оплаты.');
+  }
+  if (!Number.isFinite(amount) || amount <= 0) errors.push('Сумма должна быть больше нуля.');
+  if (!draft.serviceStage.trim()) errors.push('Укажите этап или услугу.');
+  if (!draft.paymentPurpose.trim()) errors.push('Укажите назначение платежа.');
+
+  return errors;
 }
 
 export function enrichPayments(payments, projects, legalEntities) {
@@ -112,7 +180,7 @@ export function applyFilters(payments, filters) {
   });
 }
 
-export function calculateSummary(payments, projects) {
+export function calculateSummary(payments) {
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const closedPayments = payments.filter((payment) => payment.actStatus.key === 'closed');
   const openPayments = payments.filter((payment) => payment.actStatus.key !== 'closed');
@@ -131,22 +199,31 @@ export function calculateSummary(payments, projects) {
 }
 
 export function calculateProjectRows(payments, projects, legalEntities) {
-  return projects.map((project) => {
-    const related = payments.filter((payment) => payment.projectId === project.id);
-    const legalEntity = legalEntities.find((item) => item.id === project.legalEntityId);
-    const closed = related.filter((payment) => payment.actStatus.key === 'closed').length;
-    const attention = related.some((payment) => payment.actStatus.key === 'attention');
+  return projects
+    .map((project) => {
+      const related = payments.filter((payment) => payment.projectId === project.id);
+      const legalEntity = legalEntities.find((item) => item.id === project.legalEntityId);
+      const closed = related.filter((payment) => payment.actStatus.key === 'closed').length;
+      const attention = related.some((payment) => payment.actStatus.key === 'attention');
 
-    return {
-      ...project,
-      legalEntity,
-      totalPaid: related.reduce((sum, payment) => sum + payment.amount, 0),
-      paymentCount: related.length,
-      closedActs: closed,
-      openActs: related.length - closed,
-      documentStatus: attention ? 'attention' : closed === related.length ? 'closed' : 'in-progress'
-    };
-  }).filter((project) => project.paymentCount > 0);
+      return {
+        ...project,
+        legalEntity,
+        totalPaid: related.reduce((sum, payment) => sum + payment.amount, 0),
+        paymentCount: related.length,
+        closedActs: closed,
+        openActs: related.length - closed,
+        documentStatus: getProjectDocumentStatus(related, closed, attention)
+      };
+    })
+    .filter((project) => project.paymentCount > 0);
+}
+
+function getProjectDocumentStatus(payments, closed, attention) {
+  if (payments.length === 0) return 'empty';
+  if (attention) return 'attention';
+  if (closed === payments.length) return 'closed';
+  return 'in-progress';
 }
 
 function isInsidePeriod(date, days) {

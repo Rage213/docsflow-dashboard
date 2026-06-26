@@ -53,17 +53,26 @@ const stageRules = [
 export function normalizeBankRows(rows, projects, legalEntities) {
   const payments = [];
   const unresolvedRows = [];
+  const invalidRows = [];
 
   rows.forEach((row) => {
-    const legalEntity = legalEntities.find(
-      (entity) => entity.inn === row.payerInn || entity.name === row.payerName
-    );
+    const validationErrors = validateBankRow(row);
+
+    if (validationErrors.length > 0) {
+      invalidRows.push({ ...row, errors: validationErrors });
+      return;
+    }
+
+    const legalEntity = resolveLegalEntity(row, legalEntities);
     const project = legalEntity
       ? projects.find((item) => item.legalEntityId === legalEntity.id)
       : null;
 
     if (!legalEntity || !project) {
-      unresolvedRows.push(row);
+      unresolvedRows.push({
+        ...row,
+        errors: [!legalEntity ? 'Юрлицо не найдено по ИНН/названию.' : 'Проект для юрлица не найден.']
+      });
       return;
     }
 
@@ -72,11 +81,11 @@ export function normalizeBankRows(rows, projects, legalEntities) {
       projectId: project.id,
       legalEntityId: legalEntity.id,
       paymentDate: row.paymentDate,
-      amount: row.amount,
-      paymentPurpose: row.paymentPurpose,
+      amount: Number(row.amount),
+      paymentPurpose: row.paymentPurpose.trim(),
       serviceStage: detectServiceStage(row.paymentPurpose),
-      invoiceNumber: row.invoiceNumber,
-      contractNumber: row.contractNumber,
+      invoiceNumber: row.invoiceNumber || 'без счета',
+      contractNumber: row.contractNumber || 'б/н',
       source: 'bank-pdf',
       act: {
         isSent: false,
@@ -91,9 +100,34 @@ export function normalizeBankRows(rows, projects, legalEntities) {
   return {
     payments,
     unresolvedRows,
+    invalidRows,
     recognizedCount: payments.length,
     sourceName: 'bank_statement_project_data_clean.pdf'
   };
+}
+
+export function validateBankRow(row) {
+  const errors = [];
+  const amount = Number(row.amount);
+  const date = new Date(`${row.paymentDate}T12:00:00`);
+
+  if (!row.id) errors.push('Нет уникального идентификатора операции.');
+  if (!row.paymentDate || Number.isNaN(date.getTime())) errors.push('Некорректная дата операции.');
+  if (!Number.isFinite(amount) || amount <= 0) errors.push('Сумма операции должна быть больше нуля.');
+  if (!row.payerInn && !row.payerName) errors.push('Нет ИНН или названия плательщика.');
+  if (!row.paymentPurpose || !row.paymentPurpose.trim()) errors.push('Нет назначения платежа.');
+
+  return errors;
+}
+
+function resolveLegalEntity(row, legalEntities) {
+  const payerName = row.payerName?.trim().toLowerCase();
+
+  return legalEntities.find((entity) => {
+    const sameInn = row.payerInn && entity.inn === row.payerInn;
+    const sameName = payerName && entity.name.toLowerCase() === payerName;
+    return sameInn || sameName;
+  });
 }
 
 function detectServiceStage(text) {
