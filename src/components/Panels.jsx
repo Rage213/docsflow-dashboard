@@ -2,6 +2,8 @@ import { businessRules, formatDate, formatMoney } from '../businessLogic.js';
 import { entityModel } from '../domainModel.js';
 import { StatusChip, Toggle } from './Ui.jsx';
 
+const BANK_STATEMENT_PDF_URL = `${import.meta.env.BASE_URL}bank_statement_project_data_clean.pdf`;
+
 export function ImportPanel({ report, onImport }) {
   return (
     <section className="import-panel">
@@ -21,9 +23,14 @@ export function ImportPanel({ report, onImport }) {
           </span>
         </div>
       )}
-      <button className="primary-button" onClick={onImport}>
-        Импортировать PDF
-      </button>
+      <div className="import-actions">
+        <a className="ghost-button download-link" href={BANK_STATEMENT_PDF_URL} download>
+          Скачать PDF
+        </a>
+        <button className="primary-button" onClick={onImport}>
+          Импортировать PDF
+        </button>
+      </div>
     </section>
   );
 }
@@ -380,3 +387,4 @@ function handleToggle(event, paymentId, key, onToggleAct) {
   event.stopPropagation();
   onToggleAct(paymentId, key);
 }
+
